@@ -1,11 +1,11 @@
-MEP Latency Detection Pipeline
+# MEP Latency Detection Pipeline
 
 This repository contains a Python script for the automatic detection of Motor-Evoked Potential (MEP) latencies from multichannel EMG data. The pipeline is designed to be run from the command line and can process entire folders of data in parallel.
 
 The detection algorithm is based on a derivative-ratio method, incorporates artefact rejection gates, and can automatically distinguish between resting and active motor states based on the input filename.
 
 
-Features
+# Features
 
 Automated Task Mode: The script can automatically apply different analysis rules for resting and active state data by searching for a token (e.g., "act") in the filename.
 
@@ -18,14 +18,14 @@ Configurable Parameters: Key detection parameters, such as the RMS multiplier fo
 Preprocessing: Includes optional 50 Hz mains noise filtering and signal smoothing.
 
 
-Requirements and Installation
+# Requirements and Installation
 
 This script requires Python 3 and several common scientific computing libraries.
 
   pip install numpy pandas scipy joblib
   
 
-Data Structure
+# Data Structure
 
 For the script to work correctly, your data should be structured as follows:
 
@@ -56,7 +56,7 @@ participant2_active_map.npy → will be treated as active (if --active-token is 
 S03_bicep_act.npy → will be treated as active (using the default token act).
 
 
-Usage
+# Usage
 
 The script is run from the command line. You must provide the input and output directories and the path to your channel file.
 
@@ -84,7 +84,7 @@ Argument	Description	Default
 --log	Sets the level of detail for console output (DEBUG, INFO, WARNING, ERROR).	"INFO"
 
 
-The Algorithm at a Glance
+# The Algorithm at a Glance
 
 The script processes each channel of each trial through the following steps:
 
@@ -99,7 +99,7 @@ Candidate Refinement: The primary candidate and nearby points are further valida
 Output: If a valid onset is found, its latency in milliseconds is recorded. If a trial is rejected or an onset cannot be reliably determined, a descriptive string (NaN, null_onset) is recorded instead.
 
 
-Output Format
+# Output Format
 The script generates one .csv file for each .npy file found in the input directory.
 
 Filename: The output filename will be the same as the input, but with a _latencies.csv suffix (e.g., participant1_rest_map_latencies.csv).
