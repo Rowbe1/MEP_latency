@@ -75,8 +75,11 @@ Command-Line Arguments
 
 Argument	Description	Default
 --in-dir	(Required) Path to the folder containing your .npy data files.
+
 --out-dir	(Required) Path to the folder where output .csv files will be saved.
+
 --channels	(Required) Path to the .npy file containing channel names.	
+
 --task-mode	Sets the rule for pre-stimulus artefact rejection. 
 
 <br>• rest: Stricter threshold, assumes low baseline EMG. 
@@ -84,8 +87,11 @@ Argument	Description	Default
 <br>• auto: Chooses the mode for each file based on the --active-token.	"rest"
 
 --parallel	Number of CPU cores to use for processing files in parallel. 0 runs the script serially.
+
 --rms-multiplier	A key parameter that refines the final latency candidate. It checks that the RMS amplitude in a window following the candidate onset is at least X times the baseline RMS. Lowering this value makes the check more lenient.
+
 --active-token	The string to search for in filenames when --task-mode is set to auto.	"act"
+
 --log	Sets the level of detail for console output (DEBUG, INFO, WARNING, ERROR).	"INFO"
 
 
