@@ -1,9 +1,11 @@
 MEP Latency Detection Pipeline
+
 This repository contains a Python script for the automatic detection of Motor-Evoked Potential (MEP) latencies from multichannel EMG data. The pipeline is designed to be run from the command line and can process entire folders of data in parallel.
 
 The detection algorithm is based on a derivative-ratio method, incorporates artefact rejection gates, and can automatically distinguish between resting and active motor states based on the input filename.
 
 Features
+
 Automated Task Mode: The script can automatically apply different analysis rules for resting and active state data by searching for a token (e.g., "act") in the filename.
 
 Artefact Rejection: Includes built-in gates to reject trials based on excessive pre-stimulus muscle activity and low peak-to-peak amplitude.
@@ -15,11 +17,13 @@ Configurable Parameters: Key detection parameters, such as the RMS multiplier fo
 Preprocessing: Includes optional 50 Hz mains noise filtering and signal smoothing.
 
 Requirements and Installation
+
 This script requires Python 3 and several common scientific computing libraries.
 
   pip install numpy pandas scipy joblib
 
 Data Structure
+
 For the script to work correctly, your data should be structured as follows:
 
 EMG Data (--in-dir):
@@ -49,12 +53,12 @@ participant2_active_map.npy → will be treated as active (if --active-token is 
 S03_bicep_act.npy → will be treated as active (using the default token act).
 
 Usage
+
 The script is run from the command line. You must provide the input and output directories and the path to your channel file.
 
 Basic Example Command
-Here is a typical command to run the pipeline on the example data, using automatic task detection and 4 CPU cores:
 
-Bash
+Here is a typical command to run the pipeline on the example data, using automatic task detection and 4 CPU cores:
 
 python MEP_latency_derivative_ratio.py \
     --in-dir "data/control_data/lats" \
@@ -62,7 +66,9 @@ python MEP_latency_derivative_ratio.py \
     --channels "data/channels.npy" \
     --task-mode "auto" \
     --parallel 4
+
 Command-Line Arguments
+
 Argument	Description	Default
 --in-dir	(Required) Path to the folder containing your .npy data files.	
 --out-dir	(Required) Path to the folder where output .csv files will be saved.	
@@ -74,6 +80,7 @@ Argument	Description	Default
 --log	Sets the level of detail for console output (DEBUG, INFO, WARNING, ERROR).	"INFO"
 
 The Algorithm at a Glance
+
 The script processes each channel of each trial through the following steps:
 
 Preprocessing: A 50 Hz notch filter is applied to remove mains noise, followed by a rolling average filter to smooth the signal.
