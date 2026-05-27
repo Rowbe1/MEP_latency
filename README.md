@@ -1,124 +1,365 @@
 # MEP Latency Detection Pipeline
 
-This repository contains a Python script for the automatic detection of Motor-Evoked Potential (MEP) latencies from multichannel EMG data. The pipeline is designed to be run from the command line and can process entire folders of data in parallel.
+This repository contains a Python implementation of a derivative-ratio method for automated detection of motor-evoked potential (MEP) onset latencies from multichannel EMG data.
 
-The detection algorithm is based on a derivative-ratio method, incorporates artefact rejection gates, and can automatically distinguish between resting and active motor states based on the input filename.
+The pipeline is designed for transcranial magnetic stimulation (TMS) studies involving repeated EMG epochs, including cortical mapping datasets with multiple muscles recorded simultaneously. It processes folders of NumPy `.npy` files and produces one wide-format latency `.csv` file per input file.
 
+The script can be run from the command line, supports optional resampling, can process files in parallel, and includes console reporting of computational runtime.
 
-# Features
+---
 
-Automated Task Mode: The script can automatically apply different analysis rules for resting and active state data by searching for a token (e.g., "act") in the filename.
+## Features
 
-Artefact Rejection: Includes built-in gates to reject trials based on excessive pre-stimulus muscle activity and low peak-to-peak amplitude.
+- **Automated MEP onset latency detection**  
+  Detects MEP onset latencies using a derivative-ratio method designed to identify the transition from baseline activity to the rising phase of the MEP.
 
-Parallel Processing: Can significantly speed up analysis by processing multiple files simultaneously across different CPU cores.
+- **Multichannel EMG support**  
+  Processes data shaped as `samples × frames × channels`, allowing simultaneous analysis of multiple muscles.
 
-Configurable Parameters: Key detection parameters, such as the RMS multiplier for onset refinement, can be adjusted via command-line arguments.
+- **Resting and active task modes**  
+  Applies different pre-stimulus artefact rules for resting and active recordings. The script can also automatically infer task mode from the filename.
 
-Preprocessing: Includes optional 50 Hz mains noise filtering and signal smoothing.
+- **Artefact rejection gates**  
+  Includes pre-stimulus RMS screening and an amplitude gate requiring the MEP peak-to-peak amplitude to exceed baseline activity.
 
+- **Sampling-rate-aware parameters**  
+  Key timing parameters are specified in milliseconds and converted to samples using the effective sampling rate.
 
-# Requirements and Installation
+- **Optional resampling**  
+  Input data can be analysed at the native sampling rate or resampled to a target sampling rate before latency detection.
 
-This script requires Python 3 and several common scientific computing libraries.
+- **Parallel processing**  
+  Multiple files can be processed simultaneously using `joblib`.
 
-  pip install numpy pandas scipy joblib
-  
+- **Runtime reporting**  
+  For each file, the script reports total processing time, time per frame, and time per channel-frame/epoch.
 
-# Data Structure
+- **Configurable command-line parameters**  
+  Detection and preprocessing parameters can be adjusted from the command line for sensitivity analyses.
 
-For the script to work correctly, your data should be structured as follows:
+---
 
-EMG Data (--in-dir):
+## Requirements
 
-Place all your EMG data files in a single folder.
+The script requires Python 3 and the following Python packages:
 
-Files must be in the NumPy (.npy) format.
+```bash
+pip install numpy pandas scipy joblib
+```
 
-Each file should be a 3D array with the shape: (samples, frames, channels).
+The script has been developed for offline analysis of epoched EMG data stored as NumPy arrays.
 
-Channel File (--channels):
+---
 
-This is a single .npy file containing a list of channel names (strings). The order of names must match the order of channels in the third dimension of your EMG data arrays. 
+## Data structure
 
-This file should be saved in a separate folder to your EMG data.
+### EMG input files
 
-File Naming for auto Task Mode:
+Place the EMG files to be analysed in a single input folder.
 
-If you use --task-mode auto, the script will look for a specific token in the filename to identify "active" recordings. The default token is act.
+Each EMG file must be a NumPy `.npy` file containing an array with shape:
+
+```text
+samples × frames × channels
+```
+
+For example, an 8-channel mapping file containing 80 frames sampled at 2 kHz for 0.75 seconds per frame would have shape:
+
+```text
+1500 × 80 × 8
+```
+
+If a file contains only a 2D array with shape:
+
+```text
+samples × frames
+```
+
+the script treats it as single-channel data.
+
+### Channel file
+
+The `--channels` argument should point to a `.npy` file containing a list of channel names.
 
 For example:
 
-participant1_rest_map.npy → will be treated as rest.
+```python
+["FDI", "APB", "ADM", "EDC", "FDS", "TB", "BB", "AD"]
+```
 
-participant2_active_map.npy → will be treated as active (if --active-token is "active").
+The order of channel names must match the channel order in the third dimension of the EMG arrays.
 
-S03_bicep_act.npy → will be treated as active (using the default token act).
+The channel file can be stored separately from the input EMG folder.
 
+---
 
-# Usage
+## File naming for automatic task mode
 
-The script is run from the command line. You must provide the input and output directories and the path to your channel file.
+If `--task-mode auto` is used, the script checks each filename for a token indicating that the recording was performed during an active task.
 
-Basic Example Command
+The default active token is:
 
-Here is a typical command to run the pipeline on the example data, using automatic task detection and 4 CPU cores:
+```text
+act
+```
 
+Examples:
+
+```text
+participant1_rest_map.npy       -> analysed as rest
+participant2_active_map.npy     -> analysed as active if --active-token active
+S03_bicep_act.npy               -> analysed as active using the default token act
+```
+
+The active token is matched as a standalone text chunk, so filenames should be named clearly.
+
+---
+
+## Basic usage
+
+Run the script from the command line by providing:
+
+1. an input folder containing `.npy` EMG files,
+2. an output folder for latency `.csv` files,
+3. a channel-name `.npy` file.
+
+Example:
+
+```bash
 python MEP_latency_derivative_ratio.py \
     --in-dir "data/control_data/lats" \
     --out-dir "data/output" \
     --channels "data/channels.npy" \
-    --task-mode "auto" \
+    --task-mode auto \
     --parallel 4
+```
 
-Command-Line Arguments
+To run serially rather than in parallel:
 
-Argument	Description	Default
---in-dir	(Required) Path to the folder containing your .npy data files.
+```bash
+python MEP_latency_derivative_ratio.py \
+    --in-dir "data/control_data/lats" \
+    --out-dir "data/output" \
+    --channels "data/channels.npy" \
+    --task-mode auto \
+    --parallel 0
+```
 
---out-dir	(Required) Path to the folder where output .csv files will be saved.
+---
 
---channels	(Required) Path to the .npy file containing channel names.	
+## Optional resampling
 
---task-mode	Sets the rule for pre-stimulus artefact rejection. 
+By default, the script analyses data at the native sampling rate specified by `--fs`.
 
-<br>• rest: Stricter threshold, assumes low baseline EMG. 
-<br>• active: More lenient threshold, assumes tonic muscle contraction. 
-<br>• auto: Chooses the mode for each file based on the --active-token.	"rest"
+For example, to analyse native 2 kHz data:
 
---parallel	Number of CPU cores to use for processing files in parallel. 0 runs the script serially.
+```bash
+python MEP_latency_derivative_ratio.py \
+    --in-dir "data/control_data/lats" \
+    --out-dir "data/output" \
+    --channels "data/channels.npy" \
+    --fs 2000 \
+    --task-mode auto
+```
 
---rms-multiplier	A key parameter that refines the final latency candidate. It checks that the RMS amplitude in a window following the candidate onset is at least X times the baseline RMS. Lowering this value makes the check more lenient.
+To resample 2 kHz data to 5 kHz before latency detection:
 
---active-token	The string to search for in filenames when --task-mode is set to auto.	"act"
+```bash
+python MEP_latency_derivative_ratio.py \
+    --in-dir "data/control_data/lats" \
+    --out-dir "data/output" \
+    --channels "data/channels.npy" \
+    --fs 2000 \
+    --resample-to-hz 5000 \
+    --task-mode auto
+```
 
---log	Sets the level of detail for console output (DEBUG, INFO, WARNING, ERROR).	"INFO"
+Resampling is performed using `scipy.signal.resample_poly` along the sample axis only, preserving the frame and channel dimensions.
 
+---
 
-# The Algorithm at a Glance
+## Command-line arguments
 
-The script processes each channel of each trial through the following steps:
+| Argument | Description | Default |
+|---|---|---|
+| `--in-dir` | Required. Folder containing input `.npy` EMG files. | None |
+| `--out-dir` | Required. Folder where output `.csv` files will be saved. | None |
+| `--channels` | Required. Path to `.npy` file containing channel names. | None |
+| `--fs` | Native input sampling rate in Hz before optional resampling. | `2000` |
+| `--resample-to-hz` | Optional target sampling rate in Hz. If omitted, native sampling rate is used. | `None` |
+| `--task-mode` | Task mode for pre-stimulus artefact rejection: `rest`, `active`, or `auto`. | `rest` |
+| `--active-token` | Filename token used to identify active recordings when `--task-mode auto` is used. | `act` |
+| `--parallel` | Number of parallel workers. Use `0` for serial processing. | `0` |
+| `--log` | Console logging level: `DEBUG`, `INFO`, `WARNING`, or `ERROR`. | `INFO` |
 
-Preprocessing: A 50 Hz notch filter is applied to remove mains noise, followed by a rolling average filter to smooth the signal.
+---
 
-Artefact Rejection: Trials are first screened for excessive baseline muscle activity. A second gate then removes trials where the peak-to-peak amplitude of the MEP is not sufficiently larger than the baseline amplitude.
+## Key detection parameters
 
-Onset Candidacy: The algorithm calculates the signal's first derivative (change over time). It then slides through the MEP window, calculating the ratio of the mean derivative in the next 5 samples to the previous 5 samples. The point with the maximum ratio is identified as the primary candidate for the MEP onset.
+The following parameters can be adjusted from the command line for sensitivity analyses.
 
-Candidate Refinement: The primary candidate and nearby points are further validated. A candidate is confirmed as the final latency if, among other checks, the root-mean-square (RMS) amplitude of the signal in the window immediately following it is significantly greater than the baseline RMS.
+| Argument | Description | Default |
+|---|---|---|
+| `--ptp-factor` | MEP peak-to-peak amplitude must exceed this multiple of baseline peak-to-peak amplitude. | `1.1` |
+| `--derivative-block-ms` | Window length, in milliseconds, used before and after each candidate point for derivative-ratio calculation. | `2.5` |
+| `--derivative-ratio-thresh` | Candidate plateau threshold expressed as a fraction of the maximum derivative ratio. | `0.85` |
+| `--search-back-factor` | Search-back limit expressed as a multiple of the peak-to-trough distance. | `1.75` |
+| `--peak2trough-min-ms` | Minimum allowed peak-to-trough interval in milliseconds. | `5.0` |
+| `--peak2trough-max-ms` | Maximum allowed peak-to-trough interval in milliseconds. | `7.5` |
+| `--rms-multiplier` | Baseline RMS multiplier used during onset-candidate refinement. | `1.5` |
+| `--smoothing` | Signal smoothing method: `rolling`, `gaussian`, or `none`. | `rolling` |
+| `--rolling-smooth-ms` | Rolling smoothing window in milliseconds. | `2.5` |
+| `--gaussian-sigma-ms` | Gaussian smoothing sigma in milliseconds. | `1.0` |
+| `--refine-chunk-ms` | Initial refinement chunk length in milliseconds. | `2.0` |
+| `--tpl-anchor-tol-ms` | Template-anchor tolerance in milliseconds. | `7.5` |
 
-Output: If a valid onset is found, its latency in milliseconds is recorded. If a trial is rejected or an onset cannot be reliably determined, a descriptive string (NaN, null_onset) is recorded instead.
+---
 
+## Algorithm overview
 
-# Output Format
-The script generates one .csv file for each .npy file found in the input directory.
+For each input file, the script processes each channel and frame as follows.
 
-Filename: The output filename will be the same as the input, but with a _latencies.csv suffix (e.g., participant1_rest_map_latencies.csv).
+### 1. Optional resampling
 
-Structure: The CSV file is in a "wide" format.
+If `--resample-to-hz` is specified, the EMG block is resampled along the sample axis before filtering, template creation, gating, and latency detection.
 
-Rows correspond to frames (trials), indexed starting from 1.
+### 2. Preprocessing
 
-Columns correspond to the EMG channels.
+A 50 Hz notch filter is applied by default to reduce mains noise. The signal is then smoothed using either a rolling or Gaussian smoothing operation, depending on the selected configuration.
 
-Values: The cells contain the detected MEP latency in milliseconds, rounded to 3 decimal places. If no valid latency is found, the cell will contain a string descriptor.
+### 3. Template construction
+
+For each channel, the script builds a normalised average MEP template from frames that pass the initial pre-stimulus and amplitude gates. This template is used to constrain the expected timing of the principal MEP deflection.
+
+### 4. Artefact and amplitude gating
+
+Frames are screened for excessive pre-stimulus activity. Frames are also rejected if the MEP-window peak-to-peak amplitude is not sufficiently greater than the baseline peak-to-peak amplitude.
+
+Rejected frames are retained in the output table but assigned a missing or descriptive value rather than being removed.
+
+### 5. Derivative-ratio scan
+
+For each retained frame, the algorithm identifies the first major MEP deflection and scans backwards through the signal. At each candidate sample, it compares the mean absolute derivative after that point with the mean absolute derivative before that point.
+
+The point with the largest derivative ratio is treated as the primary onset candidate.
+
+### 6. Candidate refinement
+
+The primary candidate and neighbouring samples are tested against additional criteria, including local slope consistency and post-candidate RMS amplitude relative to baseline RMS.
+
+If a candidate passes these checks, the onset latency is recorded in milliseconds relative to the TMS pulse.
+
+### 7. Output
+
+If a valid onset is detected, the latency is saved in milliseconds. If the trial is rejected or no reliable onset is identified, a descriptive missing-value marker is saved instead.
+
+---
+
+## Output format
+
+The script generates one `.csv` file per input `.npy` file.
+
+Output filenames use the input filename stem with the suffix:
+
+```text
+_latencies.csv
+```
+
+For example:
+
+```text
+participant1_rest_map.npy
+```
+
+becomes:
+
+```text
+participant1_rest_map_latencies.csv
+```
+
+Each output file is a wide-format table:
+
+- rows correspond to frames/trials,
+- row indices start at 1,
+- columns correspond to EMG channels,
+- values are detected MEP onset latencies in milliseconds, rounded to 3 decimal places.
+
+Example:
+
+| frame | FDI | APB | ADM | EDC |
+|---|---:|---:|---:|---:|
+| 1 | 22.500 | 21.000 | NaN | 17.500 |
+| 2 | 23.000 | null_onset | 21.500 | 18.000 |
+
+---
+
+## Runtime reporting
+
+From v1.0.1, the script prints runtime information to the console for each processed file.
+
+Example:
+
+```text
+Runtime: 2.134 s total | 26.68 ms/frame | 3.34 ms/channel-frame
+```
+
+For a typical 8-channel, 80-frame mapping file:
+
+```text
+80 frames × 8 channels = 640 channel-frames
+```
+
+The `ms/channel-frame` value therefore gives an approximate per-epoch processing time.
+
+When processing multiple files, the script also prints an overall runtime summary.
+
+---
+
+## Parallel processing
+
+The `--parallel` argument controls whether files are processed serially or in parallel.
+
+Serial processing:
+
+```bash
+--parallel 0
+```
+
+Parallel processing with 4 workers:
+
+```bash
+--parallel 4
+```
+
+Parallel processing is most useful when analysing several files. For very small batches, serial processing may be easier for debugging and can avoid parallelisation overhead.
+
+---
+
+## Version notes
+
+### v1.0.1
+
+- Added console reporting of computational runtime per file.
+- Runtime output includes total runtime, ms/frame, and ms/channel-frame.
+- Added an overall runtime summary across processed files.
+- Optimised the derivative-ratio detector by replacing per-frame pandas operations with NumPy-based operations.
+- Preserved the existing command-line interface and output CSV structure.
+- Output latencies are unchanged relative to v1.0.0 for validation checks performed on representative active and resting multichannel files.
+
+### v1.0.0
+
+- Initial public release of the derivative-ratio MEP onset latency detection pipeline.
+
+---
+
+## Citation
+
+If you use this code, please cite the Zenodo record associated with the version used for your analysis.
+
+For reproducible analyses, cite the specific version DOI rather than only the general repository link.
+
+---
+
+## Notes
+
+This pipeline was developed for offline analysis of epoched EMG data from TMS studies. The script is intended to support scalable analysis of MEP onset latency in multichannel datasets, but users should inspect outputs and validate performance for their own recording setup, muscles, sampling rate, filtering, and participant population.

@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: "MEP latency detection pipeline"
+version: 1.0.1
+type: software
+message: "If you use this software, please cite it using the metadata below."
+authors:
+  - family-names: Boyles
+    given-names: Rowan
+keywords:
+  - transcranial magnetic stimulation
+  - motor evoked potentials
+  - electromyography
+  - latency detection
+  - Python
+license: CC-BY-4.0
+repository-code: "https://github.com/Rowbe1/MEP_latency"
+abstract: "Python implementation of a derivative-ratio method for automated motor evoked potential onset latency detection in multichannel EMG data."
